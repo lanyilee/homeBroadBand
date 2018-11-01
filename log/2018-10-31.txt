@@ -1,0 +1,2 @@
+======2018-10-31 19:03:27====={"result":true,"resultMsg":"成功","resultContent":{"accounttype":"1","mobileno":"18320272979"},"resultCode":"0","resultCount":1}
+======2018-10-31 19:04:12====={"result":false,"resultMsg":"失败","resultContent":{"retcode":"E001","rettype":"600","retmsg":"宽带优惠方案还可使用，暂不能办理续费"},"resultCode":"-1","resultCount":1}
