@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/cipher"
 	"crypto/des"
-	"os/exec"
 )
 
 type CbcDesEncrypt struct {

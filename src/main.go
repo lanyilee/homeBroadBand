@@ -2,11 +2,12 @@ package main
 
 import (
 	"core"
-	"log"
+	"fmt"
+	"os"
 )
 
 func main() {
-	//configPath:="./url.conf"
+	//configPath:="./config.conf"
 	//config,_:=core.ReadConfig(configPath)
 	//mobileData:=&core.MobileData{"18320272979",""}
 	//typeResult := mobileData.BroadbandTypeApi(config.QueryBroadbandTypeUrl)
@@ -21,13 +22,34 @@ func main() {
 	//core.CompressSingle(logtxt,"",w)
 
 	//加密
-	err := core.Encrypt3DESByOpenssl("12345678abcdefgh87654321", "log/123.zip")
-	if err != nil {
-		log.Panic(err)
-	}
+	//err := core.Encrypt3DESByOpenssl("12345678abcdefgh87654321", "log/123.zip")
+	//if err != nil {
+	//	log.Panic(err)
+	//}
+
 	//解密
 	//err:=core.Zip3DESDEncrypt("log/test.zip.des","12345678abcdefgh87654321",&core.CbcDesEncrypt{})
 	//if err!=nil{
 	//	log.Panic(err)
 	//}
+
+	//访问ftp服务器
+	ftp := new(core.FTP)
+	// debug default false
+	ftp.Debug = true
+	ftp.Connect("192.168.1.100", 21)
+
+	// login
+	ftp.Login("Temp", "123")
+	if ftp.Code == 530 {
+		fmt.Println("error: login failure")
+		os.Exit(-1)
+	}
+
+	//
+	ftp.RETR("test.txt", "./log/download.txt")
+	fmt.Println("code:", ftp.Code, ", message:", ftp.Message)
+
+	ftp.Quit()
+
 }

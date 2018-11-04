@@ -1,0 +1,91 @@
+======2018-11-04 13:19:30=====220 Microsoft FTP Service
+
+======2018-11-04 13:19:30=====331 Password required
+
+======2018-11-04 13:19:30=====230 User logged in.
+
+======2018-11-04 13:19:30=====227 Entering Passive Mode (192,168,1,100,253,188).
+
+======2018-11-04 13:19:30=====500 Command not understood.
+
+======2018-11-04 13:21:41=====
+======2018-11-04 13:22:03=====220 Microsoft FTP Service
+
+======2018-11-04 13:22:03=====331 Password required
+
+======2018-11-04 13:22:03=====230 User logged in.
+
+======2018-11-04 13:22:03=====227 Entering Passive Mode (192,168,1,100,254,182).
+
+======2018-11-04 13:22:03=====500 Command not understood.
+
+======2018-11-04 13:22:41=====220 Microsoft FTP Service
+
+======2018-11-04 13:22:41=====331 Password required
+
+======2018-11-04 13:22:41=====230 User logged in.
+
+======2018-11-04 13:22:41=====550 The filename, directory name, or volume label syntax is incorrect. 
+
+======2018-11-04 13:22:41=====221 Goodbye.
+
+======2018-11-04 13:23:08=====220 Microsoft FTP Service
+
+======2018-11-04 13:23:08=====331 Password required
+
+======2018-11-04 13:23:08=====230 User logged in.
+
+======2018-11-04 13:23:08=====550 The filename, directory name, or volume label syntax is incorrect. 
+
+======2018-11-04 13:23:08=====221 Goodbye.
+
+======2018-11-04 13:24:11=====
+======2018-11-04 14:21:43=====220 Microsoft FTP Service
+
+======2018-11-04 14:21:43=====331 Password required
+
+======2018-11-04 14:21:43=====230 User logged in.
+
+======2018-11-04 14:21:43=====227 Entering Passive Mode (192,168,1,100,215,27).
+
+======2018-11-04 14:21:43=====500 Command not understood.
+
+======2018-11-04 14:21:59=====220 Microsoft FTP Service
+
+======2018-11-04 14:21:59=====331 Password required
+
+======2018-11-04 14:21:59=====230 User logged in.
+
+======2018-11-04 14:21:59=====227 Entering Passive Mode (192,168,1,100,215,56).
+
+======2018-11-04 14:21:59=====500 Command not understood.
+
+======2018-11-04 14:23:18=====220 Microsoft FTP Service
+
+======2018-11-04 14:23:18=====331 Password required
+
+======2018-11-04 14:23:18=====230 User logged in.
+
+======2018-11-04 14:23:18=====227 Entering Passive Mode (192,168,1,100,215,199).
+
+======2018-11-04 14:23:18=====150 Opening ASCII mode data connection.
+
+======2018-11-04 14:23:18=====226 Transfer complete.
+
+======2018-11-04 14:23:18=====221 Goodbye.
+
+======2018-11-04 14:23:48=====220 Microsoft FTP Service
+
+======2018-11-04 14:23:48=====331 Password required
+
+======2018-11-04 14:23:48=====230 User logged in.
+
+======2018-11-04 14:23:48=====227 Entering Passive Mode (192,168,1,100,215,251).
+
+======2018-11-04 14:23:48=====150 Opening ASCII mode data connection.
+
+======2018-11-04 14:23:48=====226 Transfer complete.
+
+======2018-11-04 14:23:48=====221 Goodbye.
+
+======2018-11-04 14:23:50=====
