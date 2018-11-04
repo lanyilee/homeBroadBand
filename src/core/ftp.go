@@ -67,6 +67,10 @@ func (ftp *FTP) Request(cmd string) {
 	ftp.conn.Write([]byte(cmd + "\r\n"))
 	ftp.cmd = cmd
 	ftp.Code, ftp.Message = ftp.Response()
+	if ftp.Code == 550 {
+		Logger("the file can not be found :" + cmd)
+		return
+	}
 	if cmd == "PASV" {
 		start, end := strings.Index(ftp.Message, "("), strings.Index(ftp.Message, ")")
 		s := strings.Split(ftp.Message[start:end], ",")

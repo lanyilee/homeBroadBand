@@ -4,6 +4,7 @@ import (
 	"core"
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -33,23 +34,36 @@ func main() {
 	//	log.Panic(err)
 	//}
 
-	//访问ftp服务器
-	ftp := new(core.FTP)
-	// debug default false
-	ftp.Debug = true
-	ftp.Connect("192.168.1.100", 21)
-
-	// login
-	ftp.Login("Temp", "123")
-	if ftp.Code == 530 {
-		fmt.Println("error: login failure")
-		os.Exit(-1)
+	timer := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case <-timer.C:
+			Timerwork()
+		}
 	}
 
-	//
-	ftp.RETR("test.txt", "./log/download.txt")
-	fmt.Println("code:", ftp.Code, ", message:", ftp.Message)
+}
 
-	ftp.Quit()
+func Timerwork() {
+	go func() {
+		//访问ftp服务器
+		ftp := new(core.FTP)
+		// debug default false
+		ftp.Debug = true
+		ftp.Connect("192.168.1.100", 21)
+
+		// login
+		ftp.Login("Temp", "123")
+		if ftp.Code == 530 {
+			fmt.Println("error: login failure")
+			os.Exit(-1)
+		}
+
+		//
+		ftp.RETR("test2.txt", "./log/download.txt")
+		fmt.Println("code:", ftp.Code, ", message:", ftp.Message)
+
+		ftp.Quit()
+	}()
 
 }
