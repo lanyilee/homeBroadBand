@@ -71,6 +71,10 @@ func (ftp *FTP) Request(cmd string) {
 		Logger("the file can not be found :" + cmd)
 		return
 	}
+	if ftp.Code == 221 || ftp.Code == 0 {
+		Logger("Quit Ftp " + ftp.Message)
+		return
+	}
 	if cmd == "PASV" {
 		start, end := strings.Index(ftp.Message, "("), strings.Index(ftp.Message, ")")
 		s := strings.Split(ftp.Message[start:end], ",")
@@ -163,13 +167,23 @@ func newRequest(host string, port int, b []byte, downloadpath string) string {
 	return string(ret[:n])
 }
 
-//func main(){
-//	ftp :=&FTP{}
-//	//upload
-//	b,err:=ioutil.ReadFile("./log/123.txt")
-//	if err!=nil{
-//		log.Panic(err)
-//	}
-//	ftp.Stor("upload.txt",b)
-//	ftp.Quit()
-//}
+// download file ,and return the filePath
+func FtpGetFile(config *Config, dateStr string) string {
+	//访问ftp服务器
+	ftp := new(FTP)
+	// debug default false
+	ftp.Debug = true
+	ftp.Connect(config.FromFtpHost, config.FromFtpPort)
+	// login
+	ftp.Login(config.FromFtpLoginUser, config.FromFtpLoginPassword)
+	if ftp.Code == 530 {
+		fmt.Println("error: login failure")
+		os.Exit(-1)
+	}
+	// download
+	remoteFile := "JKGD" + dateStr + ".txt"
+	downloadPath := "./files/" + remoteFile
+	ftp.RETR(remoteFile, downloadPath)
+	ftp.Quit()
+	return downloadPath
+}

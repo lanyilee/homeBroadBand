@@ -3,7 +3,7 @@ package main
 import (
 	"core"
 	"fmt"
-	"os"
+	"strconv"
 	"time"
 )
 
@@ -34,7 +34,7 @@ func main() {
 	//	log.Panic(err)
 	//}
 
-	timer := time.NewTicker(time.Second * 10)
+	timer := time.NewTicker(time.Minute * 1)
 	for {
 		select {
 		case <-timer.C:
@@ -45,25 +45,49 @@ func main() {
 }
 
 func Timerwork() {
-	go func() {
-		//访问ftp服务器
-		ftp := new(core.FTP)
-		// debug default false
-		ftp.Debug = true
-		ftp.Connect("192.168.1.100", 21)
+	for i := 1; i < 6; i++ {
+		go func(i int) {
+			defer func() {
+				err := recover()
+				if err != nil {
+					fmt.Println("error ")
+				}
+			}()
+			//先检查当前日期是否已经处理过业务
+			csvUtil := &core.CsvUtil{}
+			dateStr := time.Now().Format("20060102") + strconv.Itoa(i)
+			b, err := csvUtil.IsExist(dateStr)
+			if err != nil {
+				core.Logger("csv error")
+				return
+			}
+			if b {
+				return
+			}
+			//获取配置信息
+			configPath := "./config.conf"
+			config, _ := core.ReadConfig(configPath)
+			//下载文件
+			filePath := core.FtpGetFile(&config, dateStr)
+			fmt.Println(filePath)
+			//解析文件
+			data, err := core.AnalysisText(filePath)
+			if err != nil {
+				core.Logger("analysis dataFile error ")
+				return
+			}
+			//API
+			for _, number := range data {
+				fmt.Println(number)
+			}
+			//压缩文件
+			//加密文件
+			//上传文件
 
-		// login
-		ftp.Login("Temp", "123")
-		if ftp.Code == 530 {
-			fmt.Println("error: login failure")
-			os.Exit(-1)
-		}
-
-		//
-		ftp.RETR("test2.txt", "./log/download.txt")
-		fmt.Println("code:", ftp.Code, ", message:", ftp.Message)
-
-		ftp.Quit()
-	}()
+			//最后所有操作成功后将文件日期名记录
+			csvUtil.Put(dateStr)
+			//调用通知接口
+		}(i)
+	}
 
 }

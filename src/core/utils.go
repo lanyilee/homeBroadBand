@@ -11,8 +11,14 @@ import (
 )
 
 type Config struct { //配置文件要通过tag来指定配置文件中的名称
+	//api
 	QueryBroadbandTypeUrl   string `ini:"QueryBroadbandTypeUrl"`
 	QueryKdcheckrenewalsUrl string `ini:"QueryKdcheckrenewalsUrl"`
+	//from-ftp
+	FromFtpHost          string `ini:"FromFtpHost"`
+	FromFtpPort          int    `ini:"FromFtpPort"`
+	FromFtpLoginUser     string `ini:"FromFtpLoginUser"`
+	FromFtpLoginPassword string `ini:"FromFtpLoginPassword"`
 }
 
 func Logger(strContent string) {
@@ -143,4 +149,17 @@ func Encrypt3DESByOpenssl(key string, filePath string) error {
 	Logger("encrypt success:")
 	//fmt.Printf("stdout:\n\n %s", "")
 	return nil
+}
+
+//解析文本
+func AnalysisText(filePath string) (numbers []string, err error) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		Logger("open file error :" + filePath)
+		return nil, err
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		numbers = append(numbers, line)
+	}
+	return numbers, nil
 }
