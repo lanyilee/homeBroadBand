@@ -123,7 +123,7 @@ func (ftp *FTP) List() {
 	ftp.Request("LIST")
 }
 
-//upload
+//upload pasv
 func (ftp *FTP) Stor(file string, data []byte) {
 	ftp.Pasv()
 	if data != nil {
@@ -132,11 +132,22 @@ func (ftp *FTP) Stor(file string, data []byte) {
 	ftp.Request("STOR " + file)
 }
 
-//download RETR
-func (ftp *FTP) RETR(remotefile string, Pathname string) {
-	ftp.Pasv()
-	ftp.downloadpath = Pathname
-	ftp.Request("RETR " + remotefile)
+//download RETR pasv
+func (ftp *FTP) RETR(localFile string, remoteFile string) {
+	cmd := "PUT " + localFile + " " + remoteFile
+	ftp.Request(cmd)
+}
+
+// upload PORT 主动模式
+func (ftp *FTP) Put(remoteFile string, pathName string) {
+	cmd := "PUT " + remoteFile + " " + pathName
+	ftp.Request(cmd)
+}
+
+// download PORT 主动模式
+func (ftp *FTP) Get(remotefile string, Pathname string) {
+	cmd := "GET " + remotefile + " " + Pathname
+	ftp.Request(cmd)
 }
 
 func (ftp *FTP) Quit() {
