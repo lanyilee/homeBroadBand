@@ -34,13 +34,20 @@ func main() {
 	//	log.Panic(err)
 	//}
 
-	timer := time.NewTicker(time.Minute * 1)
-	for {
-		select {
-		case <-timer.C:
-			Timerwork()
-		}
+	//对于固定时间的定时器，可以用sleep，到了时间才启动
+	fixTime := time.Date(2018, 11, 06, 07, 52, 0, 0, time.Local)
+
+	for fixTime.After(time.Now()) {
+		time.Sleep(time.Second * 1)
 	}
+	fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
+	//timer := time.NewTicker(time.Minute * 1)
+	//for {
+	//	select {
+	//	case <-timer.C:
+	//		Timerwork()
+	//	}
+	//}
 
 }
 
