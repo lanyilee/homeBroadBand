@@ -66,7 +66,7 @@ func (data *MobileData) BroadbandTypeApi(url string) (typeResult *TypeResult, er
 	} else {
 		respStr := (string)(respBytes)
 		//异步日志，优化速度
-		//Logger("type api failure: "+respStr)
+		SyncLogger("type api failure: " + respStr)
 		return nil, err
 	}
 }
@@ -109,7 +109,7 @@ func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, e
 	} else {
 		respStr := (string)(respBytes)
 		//异步日志，优化速度，
-		// Logger("check api failure: "+respStr)
+		SyncLogger("check api failure: " + respStr)
 		return nil, err
 	}
 

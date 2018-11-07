@@ -36,6 +36,15 @@ func Logger(strContent string) {
 	defer file.Close()
 }
 
+func SyncLogger(strContent string) {
+	fmt.Println("调用异步")
+	go func(str string) {
+		Logger(str)
+		fmt.Println(str + "123")
+		panic("")
+	}(strContent)
+}
+
 //读取配置文件并转成结构体
 func ReadConfig(path string) (Config, error) {
 	var config Config

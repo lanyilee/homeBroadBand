@@ -43,6 +43,8 @@ func main() {
 	//获取配置信息
 	configPath := "./config.conf"
 	config, _ = core.ReadConfig(configPath)
+	core.SyncLogger("12345")
+	fmt.Println("abcdef")
 
 	//dateStr := time.Now().Format("20060102") + strconv.Itoa(1)
 	//core.FtpGetFile(&config,dateStr)
@@ -68,14 +70,14 @@ func main() {
 	//fmt.Println(result.KdAccount)
 
 	//启动先扫描一次
-	Timerwork()
-	timer := time.NewTicker(time.Hour * 10)
-	for {
-		select {
-		case <-timer.C:
-			Timerwork()
-		}
-	}
+	//Timerwork()
+	//timer := time.NewTicker(time.Hour * 10)
+	//for {
+	//	select {
+	//	case <-timer.C:
+	//		Timerwork()
+	//	}
+	//}
 
 }
 
