@@ -14,105 +14,103 @@ type MobileData struct {
 
 type TypeResult struct {
 	Accounttype string
-	Mobileno string
+	Mobileno    string
 }
 type KdcheckResult struct {
-	KdAccount string
-	UserStatus string
+	KdAccount      string
+	UserStatus     string
 	IsManualHandle string
 	IsBookRenewals string
-	IsYearPackAge string
-	DateTouse string
-	LastDate string
-	BroadSpeed string
-
+	IsYearPackAge  string
+	DateTouse      string
+	LastDate       string
+	BroadSpeed     string
 }
 
 type ResultData struct {
-	Result bool
-	ResultMsg string
-	ResultContent json.RawMessage  `json:"ResultContent"`
-	ResultCode string
-	ResultCount int
+	Result        bool
+	ResultMsg     string
+	ResultContent json.RawMessage `json:"ResultContent"`
+	ResultCode    string
+	ResultCount   int
 }
 
-func (data *MobileData)BroadbandTypeApi(url string) *TypeResult{
-	jsonObj := make(map[string] interface{})
+func (data *MobileData) BroadbandTypeApi(url string) (typeResult *TypeResult, err error) {
+	jsonObj := make(map[string]interface{})
 	jsonObj["Mobile"] = data.Mobile
-	bytesData,err:=json.Marshal(jsonObj)
-	if err!=nil{
-		Logger(err.Error())
-		return nil
-	}
-	reader:=bytes.NewReader(bytesData)
-	request,err:=http.NewRequest("POST",url,reader)
+	bytesData, err := json.Marshal(jsonObj)
 	if err != nil {
-		Logger("BroadbandTypeApi:request:"+err.Error())
-		return nil
+		return nil, err
 	}
-	client:=http.Client{}
+	reader := bytes.NewReader(bytesData)
+	request, err := http.NewRequest("POST", url, reader)
+	if err != nil {
+		return nil, err
+	}
+	client := http.Client{}
 	resp, err := client.Do(request)
 	if err != nil {
-		Logger("BroadbandTypeApi:client:"+err.Error())
-		return nil
+		return nil, err
 	}
-	respBytes,err:=ioutil.ReadAll(resp.Body)
-	if err!=nil{
-		Logger("BroadbandTypeApi:readall:"+err.Error())
-		return nil
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
-	respObj:=&ResultData{}
-	json.Unmarshal(respBytes,respObj)
-	if respObj.Result==true{
+	respObj := &ResultData{}
+	json.Unmarshal(respBytes, respObj)
+	if respObj.Result == true {
 		//二次解析
-		typeResult := &TypeResult{}
-		json.Unmarshal(respObj.ResultContent,typeResult)
-		Logger("宽带类型查询成功")
-		return typeResult
-	}else{
+		typeResult = &TypeResult{}
+		json.Unmarshal(respObj.ResultContent, typeResult)
+		return typeResult, nil
+	} else {
 		respStr := (string)(respBytes)
-		Logger(respStr)
+		//异步日志，优化速度
+		//Logger("type api failure: "+respStr)
+		return nil, err
 	}
-	return nil
 }
 
-func (data *TypeResult)KdcheckrenewalsApi(url string) *KdcheckResult{
-	jsonObj := make(map[string] interface{})
+func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, err error) {
+	jsonObj := make(map[string]interface{})
 	jsonObj["Mobile"] = data.Mobileno
 	jsonObj["Kdtype"] = data.Accounttype
-	bytesData,err:=json.Marshal(jsonObj)
-	if err!=nil{
-		Logger(err.Error())
-		return nil
+	bytesData, err := json.Marshal(jsonObj)
+	if err != nil {
+		return nil, err
 	}
-	reader:=bytes.NewReader(bytesData)
-	request,err:=http.NewRequest("POST",url,reader)
-	if err!=nil{
-		Logger(err.Error())
-		return nil
+	reader := bytes.NewReader(bytesData)
+	request, err := http.NewRequest("POST", url, reader)
+	if err != nil {
+		return nil, err
 	}
-	client:=http.Client{}
+	client := http.Client{}
 	resp, err := client.Do(request)
-	if err!=nil{
-		Logger(err.Error())
-		return nil
+	if err != nil {
+		return nil, err
 	}
-	respBytes,err:=ioutil.ReadAll(resp.Body)
-	if err!=nil{
-		Logger(err.Error())
-		return nil
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	respStr := (string)(respBytes)
+	Logger(respStr)
+	if err != nil {
+		return nil, err
 	}
-	result:=&ResultData{}
-	json.Unmarshal(respBytes,result)
-	if result.Result==true{
+	result := &ResultData{}
+	json.Unmarshal(respBytes, result)
+	if result.Result == true {
 		//二次
-		KCheck := &KdcheckResult{}
-		json.Unmarshal(result.ResultContent,KCheck)
-		Logger("宽带续费资格校验成功")
-		return KCheck
-	}else{
+		KCheck = &KdcheckResult{}
+		//这里返回的是数组json[{}]结构，所以和上面那个api的处理不一样
+		result.ResultContent = result.ResultContent[1 : len(result.ResultContent)-1]
+		//respStr := (string)(result.ResultContent)
+		//fmt.Println(respStr)
+		json.Unmarshal(result.ResultContent, KCheck)
+		return KCheck, nil
+	} else {
 		respStr := (string)(respBytes)
-		Logger(respStr)
+		//异步日志，优化速度，
+		// Logger("check api failure: "+respStr)
+		return nil, err
 	}
-	return nil
+
 }

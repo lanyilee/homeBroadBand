@@ -1,11 +1,15 @@
 package core
 
 import (
+	"bufio"
 	"fmt"
+	"github.com/jlaffaye/ftp"
 	"gopkg.in/ini.v1"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,9 +20,10 @@ type Config struct { //配置文件要通过tag来指定配置文件中的名称
 	QueryKdcheckrenewalsUrl string `ini:"QueryKdcheckrenewalsUrl"`
 	//from-ftp
 	FromFtpHost          string `ini:"FromFtpHost"`
-	FromFtpPort          int    `ini:"FromFtpPort"`
 	FromFtpLoginUser     string `ini:"FromFtpLoginUser"`
 	FromFtpLoginPassword string `ini:"FromFtpLoginPassword"`
+	//fixed-time
+	FixedTime string `ini:"FixedTime"`
 }
 
 func Logger(strContent string) {
@@ -153,15 +158,119 @@ func Encrypt3DESByOpenssl(key string, filePath string) error {
 
 //解析文本
 func AnalysisText(filePath string) (numbers []string, err error) {
-	data, err := ioutil.ReadFile(filePath)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	info, err := os.Stat(filePath)
+	Logger(filePath + " file size is " + strconv.FormatInt(info.Size(), 10))
+	defer file.Close()
 	if err != nil {
 		Logger("open file error :" + filePath)
 		return nil, err
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		numbers = append(numbers, line)
+	//buf := make([]byte, 12)
+	bfrd := bufio.NewReader(file)
+	for {
+		line, err := bfrd.ReadBytes('\n')
+		var number string
+		length := len(line)
+		if length == 12 {
+			number = string(line[:len(line)-1]) //拿到的buf[:n]是"13432655213\n"这样的数据，所以要减-1，即11
+			numbers = append(numbers, number)
+		} else {
+			number = string(line)
+			Logger(number)
+		}
+
+		if err != nil { //遇到任何错误立即返回，并忽略 EOF 错误信息
+			if err == io.EOF {
+				Logger(filePath + " 文件号码总数：" + strconv.Itoa(len(numbers)))
+				return numbers, nil
+			}
+			Logger("read file error:" + filePath)
+			return nil, err
+		}
 	}
+	Logger(filePath + " 文件号码总数：" + strconv.Itoa(len(numbers)))
 	return numbers, nil
 }
 
-//并发调用api
+//取定时时间
+func GetFixTime(config *Config) (fixTime time.Time, err error) {
+	fixTimeStr := config.FixedTime
+	//fixTime := time.Date(2018, 11, 06, 07, 52, 0, 0, time.Local)
+	year, err := strconv.Atoi(subString(fixTimeStr, 0, 4))
+	if err != nil {
+		return fixTime, err
+	}
+	monthNum, _ := strconv.Atoi(subString(fixTimeStr, 4, 6))
+	if err != nil {
+		return fixTime, err
+	}
+	day, _ := strconv.Atoi(subString(fixTimeStr, 6, 8))
+	if err != nil {
+		return fixTime, err
+	}
+	hour, _ := strconv.Atoi(subString(fixTimeStr, 8, 10))
+	if err != nil {
+		return fixTime, err
+	}
+	min, _ := strconv.Atoi(subString(fixTimeStr, 10, 12))
+	if err != nil {
+		return fixTime, err
+	}
+	//这个month竟然还是个time.Month类型，奇葩
+	month := time.Month(monthNum)
+	fixTime = time.Date(year, month, day, hour, min, 0, 0, time.Local)
+	return fixTime, nil
+}
+
+//FTP-Get操作
+func FtpGetFile(config *Config, dateStr string) (path string, err error) {
+	//访问ftp服务器
+	entry, err := ftp.Connect(config.FromFtpHost)
+	defer entry.Quit()
+	if err != nil {
+		Logger("connect to ftp server error :" + config.FromFtpHost)
+		fmt.Println(err)
+		return "", err
+	}
+	Logger("connect to ftp server success :" + config.FromFtpHost)
+	//login
+	entry.Login(config.FromFtpLoginUser, config.FromFtpLoginPassword)
+	if err != nil {
+		Logger("ftp login error, user:" + config.FromFtpLoginUser + ";pass: " + config.FromFtpLoginPassword)
+		fmt.Println(err)
+		return "", err
+	}
+	Logger("ftp login success")
+	//get
+	remoteFile := "JKGD" + dateStr + ".txt"
+	//remoteFile := "./logfile/10008105/201810/20181008_001.log"
+	res, err := entry.Retr(remoteFile)
+	if err != nil {
+		Logger("get file error :" + remoteFile)
+		Logger(err.Error())
+		return "", err
+	}
+	Logger("get file success :" + remoteFile)
+	downloadPath := "./files/" + remoteFile
+	file, err := os.Create(downloadPath)
+	defer file.Close()
+	defer res.Close()
+	//一次读取多少字节
+	buf := make([]byte, 1024)
+	for {
+		n, err := res.Read(buf)
+		file.Write(buf[:n]) //n是成功读取个数
+		if err != nil {     //遇到任何错误立即返回，并忽略 EOF 错误信息
+			if err == io.EOF {
+				return downloadPath, nil
+			}
+			Logger(err.Error())
+			return "", err
+		}
+	}
+
+	return downloadPath, nil
+	//buf,err:= os.OpenFile("./files/123.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	//entry.Stor("/123.log",buf)
+}

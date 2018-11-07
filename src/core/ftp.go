@@ -100,12 +100,20 @@ func (ftp *FTP) Pasv() {
 	ftp.Request("PASV")
 }
 
+func (ftp *FTP) Port() {
+	ftp.Request("PORT 192.168.22.122.14.178")
+}
+
 func (ftp *FTP) Pwd() {
 	ftp.Request("PWD")
 }
 
 func (ftp *FTP) Cwd(path string) {
 	ftp.Request("CWD " + path)
+}
+
+func (ftp *FTP) Help() {
+	ftp.Request("HELP")
 }
 
 func (ftp *FTP) Mkd(path string) {
@@ -134,11 +142,11 @@ func (ftp *FTP) Stor(file string, data []byte) {
 
 //download RETR pasv
 func (ftp *FTP) RETR(localFile string, remoteFile string) {
-	cmd := "PUT " + localFile + " " + remoteFile
+	cmd := "RETR " + localFile + " " + remoteFile
 	ftp.Request(cmd)
 }
 
-// upload PORT 主动模式
+// upload PORT 主动模式,查了下help并没有get这个命令，不知道怎么解决
 func (ftp *FTP) Put(remoteFile string, pathName string) {
 	cmd := "PUT " + remoteFile + " " + pathName
 	ftp.Request(cmd)
@@ -179,22 +187,22 @@ func newRequest(host string, port int, b []byte, downloadpath string) string {
 }
 
 // download file ,and return the filePath
-func FtpGetFile(config *Config, dateStr string) string {
-	//访问ftp服务器
-	ftp := new(FTP)
-	// debug default false
-	ftp.Debug = true
-	ftp.Connect(config.FromFtpHost, config.FromFtpPort)
-	// login
-	ftp.Login(config.FromFtpLoginUser, config.FromFtpLoginPassword)
-	if ftp.Code == 530 {
-		fmt.Println("error: login failure")
-		os.Exit(-1)
-	}
-	// download
-	remoteFile := "JKGD" + dateStr + ".txt"
-	downloadPath := "./files/" + remoteFile
-	ftp.RETR(remoteFile, downloadPath)
-	ftp.Quit()
-	return downloadPath
-}
+//func FtpGetFile(config *Config, dateStr string) string {
+//	//访问ftp服务器
+//	ftp := new(FTP)
+//	// debug default false
+//	ftp.Debug = true
+//	ftp.Connect(config.FromFtpHost, config.FromFtpPort)
+//	// login
+//	ftp.Login(config.FromFtpLoginUser, config.FromFtpLoginPassword)
+//	if ftp.Code == 530 {
+//		fmt.Println("error: login failure")
+//		os.Exit(-1)
+//	}
+//	// download
+//	remoteFile := "JKGD" + dateStr + ".txt"
+//	downloadPath := "./files/" + remoteFile
+//	ftp.RETR(remoteFile, downloadPath)
+//	ftp.Quit()
+//	return downloadPath
+//}
