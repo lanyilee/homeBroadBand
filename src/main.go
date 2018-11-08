@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"core"
 	"fmt"
 	"os"
@@ -23,18 +24,6 @@ func init() {
 }
 
 func main() {
-	//logzip,_:=os.Create("log/123.zip")
-	//defer logzip.Close()
-	//w:=zip.NewWriter(logzip)
-	//defer w.Close()
-	//logtxt,_:=os.OpenFile("log/123.txt",os.O_RDWR,0777)
-	//core.CompressSingle(logtxt,"",w)
-
-	//加密
-	//err := core.Encrypt3DESByOpenssl("12345678abcdefgh87654321", "log/123.zip")
-	//if err != nil {
-	//	log.Panic(err)
-	//}
 
 	//解密
 	//err:=core.Zip3DESDEncrypt("log/test.zip.des","12345678abcdefgh87654321",&core.CbcDesEncrypt{})
@@ -134,23 +123,37 @@ func Timerwork() {
 	//模板并存储
 	formatFilePath := "./formatFiles/" + dateStr + ".txt"
 	formatFile, err := os.OpenFile(formatFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	defer formatFile.Close()
 	for _, data := range *jkData {
-		//core.Logger(data.KdAccount + " is success")
-		fmt.Println(data.KdAccount + "success")
 		fileContent := core.FormatJKText(&data)
 		buf := []byte(fileContent)
 		formatFile.Write(buf)
 	}
-	//baseZipPath := dateStr+".zip"
+	formatFile.Close()
 	//压缩文件
+	baseZipPath := dateStr + ".zip"
+	logzip, _ := os.Create("./formatFiles/" + baseZipPath)
+	defer logzip.Close()
+	w := zip.NewWriter(logzip)
+	defer w.Close()
+	formatFile, _ = os.OpenFile(formatFilePath, os.O_RDWR, 0777)
+	core.CompressSingle(formatFile, "", w)
+	core.Logger("压缩文件成功")
 	//加密文件
+	desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseZipPath)
+	if err != nil {
+		core.Logger("加密文件出错")
+	}
+	core.Logger("加密文件成功:" + desPath)
 	//上传文件
+	err = core.FtpPutFile(&config, baseZipPath+".des")
+	if err != nil {
+		core.Logger("上传文件出错")
+	}
+	core.Logger("上传文件成功")
+	//调用通知接口
 
 	//最后所有操作成功后将文件日期名记录
 	csvUtil.Put(dateStr)
-
-	//调用通知接口
 
 	//ch := make(chan int)
 	//for a := 1; a < 5; a++ {
@@ -182,7 +185,7 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 		recover()
 	}()
 	threadStr := "线程：" + strconv.Itoa(GoID()) + "；总数" + strconv.Itoa(len(data))
-	fmt.Println(threadStr)
+	//fmt.Println(threadStr)
 	core.Logger(threadStr)
 	for _, number := range data {
 		//fmt.Println(number)
@@ -209,7 +212,7 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 		}
 	}
 	threadStr2 := "线程：" + strconv.Itoa(GoID()) + " over"
-	fmt.Println(threadStr2)
+	//fmt.Println(threadStr2)
 	core.Logger(threadStr2)
 	//core.Logger("")
 

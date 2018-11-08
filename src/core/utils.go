@@ -28,6 +28,8 @@ type Config struct { //配置文件要通过tag来指定配置文件中的名称
 	ToFtpLoginUser     string `ini:"ToFtpLoginUser"`
 	ToFtpLoginPassword string `ini:"ToFtpLoginPassword"`
 	ToFtpPath          string `ini:"ToFtpPath"`
+	//des
+	DesKey string `ini:"DesKey"`
 	//fixed-time
 	FixedTime string `ini:"FixedTime"`
 }
@@ -154,9 +156,10 @@ func Zip3DESDEncrypt(zipDesPath string, key string, cbc *CbcDesEncrypt) error {
 }
 
 //用linux自带的openssl加密3DES-CBC,command的首参是openssl,不是平常的/bin/bash
-func Encrypt3DESByOpenssl(key string, filePath string) (toPath string, err error) {
-	toPath = filePath + ".des"
-	cmd := exec.Command("openssl", "enc", "-des-ede3-cbc", "-e", "-k", key, "-in", filePath, "-out", toPath)
+func Encrypt3DESByOpenssl(key string, fileName string) (desPath string, err error) {
+	filePath := "./formatFiles/" + fileName
+	desPath = filePath + ".des"
+	cmd := exec.Command("openssl", "enc", "-des-ede3-cbc", "-e", "-k", key, "-in", filePath, "-out", desPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		Logger("Error:can not obtain stdout pipe for command")
@@ -178,7 +181,7 @@ func Encrypt3DESByOpenssl(key string, filePath string) (toPath string, err error
 	}
 	Logger("encrypt success:")
 	//fmt.Printf("stdout:\n\n %s", "")
-	return toPath, nil
+	return desPath, nil
 }
 
 //解析文本
