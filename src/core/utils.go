@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/jlaffaye/ftp"
 	"gopkg.in/ini.v1"
@@ -22,6 +23,11 @@ type Config struct { //配置文件要通过tag来指定配置文件中的名称
 	FromFtpHost          string `ini:"FromFtpHost"`
 	FromFtpLoginUser     string `ini:"FromFtpLoginUser"`
 	FromFtpLoginPassword string `ini:"FromFtpLoginPassword"`
+	//to-ftp
+	ToFtpHost          string `ini:"ToFtpHost"`
+	ToFtpLoginUser     string `ini:"ToFtpLoginUser"`
+	ToFtpLoginPassword string `ini:"ToFtpLoginPassword"`
+	ToFtpPath          string `ini:"ToFtpPath"`
 	//fixed-time
 	FixedTime string `ini:"FixedTime"`
 }
@@ -30,18 +36,28 @@ func Logger(strContent string) {
 	logPath := "./log/" + time.Now().Format("2006-01-02") + ".txt"
 	file, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	fileTime := time.Now().Format("2006-01-02 15:04:05")
-	fileContent := strings.Join([]string{"======", fileTime, "=====", strContent, "\n"}, "")
+	fileContent := strings.Join([]string{"===", fileTime, "===", strContent, "\n"}, "")
 	buf := []byte(fileContent)
 	file.Write(buf)
 	defer file.Close()
 }
 
-func SyncLogger(strContent string) {
-	fmt.Println("调用异步")
+//记录失败的号码
+func LoggerFailNum(strContent string) {
+	logPath := "./log/" + time.Now().Format("2006-01-02") + "-Num.txt"
+	file, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	fileContent := strings.Join([]string{strContent, "\n"}, "")
+	buf := []byte(fileContent)
+	file.Write(buf)
+	defer file.Close()
+}
+
+func SyncLoggerNum(strContent string) {
 	go func(str string) {
-		Logger(str)
-		fmt.Println(str + "123")
-		panic("")
+		defer func() {
+			recover()
+		}()
+		LoggerFailNum(str)
 	}(strContent)
 }
 
@@ -138,31 +154,31 @@ func Zip3DESDEncrypt(zipDesPath string, key string, cbc *CbcDesEncrypt) error {
 }
 
 //用linux自带的openssl加密3DES-CBC,command的首参是openssl,不是平常的/bin/bash
-func Encrypt3DESByOpenssl(key string, filePath string) error {
-	toPath := filePath + ".des"
+func Encrypt3DESByOpenssl(key string, filePath string) (toPath string, err error) {
+	toPath = filePath + ".des"
 	cmd := exec.Command("openssl", "enc", "-des-ede3-cbc", "-e", "-k", key, "-in", filePath, "-out", toPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		Logger("Error:can not obtain stdout pipe for command")
-		return err
+		return "", err
 	}
 	//执行命令
 	if err := cmd.Start(); err != nil {
 		Logger("Error:The command is err")
-		return err
+		return "", err
 	}
 	//读取所有输出
 	_, err = ioutil.ReadAll(stdout)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := cmd.Wait(); err != nil {
-		fmt.Println("wait:", err.Error())
-		return err
+		Logger("wait error")
+		return "", err
 	}
 	Logger("encrypt success:")
 	//fmt.Printf("stdout:\n\n %s", "")
-	return nil
+	return toPath, nil
 }
 
 //解析文本
@@ -202,6 +218,12 @@ func AnalysisText(filePath string) (numbers []string, err error) {
 	return numbers, nil
 }
 
+//重构文本-模板
+func FormatJKText(kd *KdcheckResult) string {
+	str := "START|" + kd.KdAccount + "\n" + "宽带属性|" + kd.KdAccount + "~家庭宽带~" + kd.UserStatus + "~" + kd.IsYearPackAge + "~" + kd.LastDate + "~" + kd.BroadSpeed + "|010000\nEND\n"
+	return str
+}
+
 //取定时时间
 func GetFixTime(config *Config) (fixTime time.Time, err error) {
 	fixTimeStr := config.FixedTime
@@ -239,7 +261,6 @@ func FtpGetFile(config *Config, dateStr string) (path string, err error) {
 	defer entry.Quit()
 	if err != nil {
 		Logger("connect to ftp server error :" + config.FromFtpHost)
-		fmt.Println(err)
 		return "", err
 	}
 	Logger("connect to ftp server success :" + config.FromFtpHost)
@@ -282,4 +303,24 @@ func FtpGetFile(config *Config, dateStr string) (path string, err error) {
 	return downloadPath, nil
 	//buf,err:= os.OpenFile("./files/123.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	//entry.Stor("/123.log",buf)
+}
+
+//FTP-Put操作
+func FtpPutFile(config *Config, fileName string) error {
+	basePath := "./formatFiles/" + fileName
+	toPath := config.ToFtpPath + fileName
+	entry, err := ftp.Connect(config.ToFtpHost)
+	defer entry.Quit()
+	if err != nil {
+		Logger("connect to ftp server error :" + config.ToFtpHost)
+		return err
+	}
+	file, err := ioutil.ReadFile(basePath)
+	buf := bytes.NewReader(file)
+	err = entry.Stor(toPath, buf)
+	if err != nil {
+		Logger("upload file to ftp server error :" + basePath)
+		return err
+	}
+	return nil
 }

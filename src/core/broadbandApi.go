@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type MobileData struct {
@@ -36,6 +37,11 @@ type ResultData struct {
 }
 
 func (data *MobileData) BroadbandTypeApi(url string) (typeResult *TypeResult, err error) {
+	defer func() {
+		if err := recover(); err != nil {
+			SyncLoggerNum("recover msg: " + data.Mobile)
+		}
+	}()
 	jsonObj := make(map[string]interface{})
 	jsonObj["Mobile"] = data.Mobile
 	bytesData, err := json.Marshal(jsonObj)
@@ -48,6 +54,7 @@ func (data *MobileData) BroadbandTypeApi(url string) (typeResult *TypeResult, er
 		return nil, err
 	}
 	client := http.Client{}
+	client.Timeout = time.Minute * 2
 	resp, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -64,14 +71,19 @@ func (data *MobileData) BroadbandTypeApi(url string) (typeResult *TypeResult, er
 		json.Unmarshal(respObj.ResultContent, typeResult)
 		return typeResult, nil
 	} else {
-		respStr := (string)(respBytes)
+		//_:= (string)(respBytes)
 		//异步日志，优化速度
-		SyncLogger("type api failure: " + respStr)
+		//SyncLogger("type api failure: " + respStr)
 		return nil, err
 	}
 }
 
 func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, err error) {
+	defer func() {
+		if err := recover(); err != nil {
+			SyncLoggerNum("recover msg2: " + data.Mobileno)
+		}
+	}()
 	jsonObj := make(map[string]interface{})
 	jsonObj["Mobile"] = data.Mobileno
 	jsonObj["Kdtype"] = data.Accounttype
@@ -85,13 +97,12 @@ func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, e
 		return nil, err
 	}
 	client := http.Client{}
+	client.Timeout = time.Minute * 2
 	resp, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
-	respStr := (string)(respBytes)
-	Logger(respStr)
 	if err != nil {
 		return nil, err
 	}
@@ -102,14 +113,12 @@ func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, e
 		KCheck = &KdcheckResult{}
 		//这里返回的是数组json[{}]结构，所以和上面那个api的处理不一样
 		result.ResultContent = result.ResultContent[1 : len(result.ResultContent)-1]
-		//respStr := (string)(result.ResultContent)
-		//fmt.Println(respStr)
 		json.Unmarshal(result.ResultContent, KCheck)
 		return KCheck, nil
 	} else {
-		respStr := (string)(respBytes)
+		//_ := (string)(respBytes)
 		//异步日志，优化速度，
-		SyncLogger("check api failure: " + respStr)
+		//SyncLogger("check api failure: " + respStr)
 		return nil, err
 	}
 

@@ -3,8 +3,10 @@ package main
 import (
 	"core"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,8 +45,6 @@ func main() {
 	//获取配置信息
 	configPath := "./config.conf"
 	config, _ = core.ReadConfig(configPath)
-	core.SyncLogger("12345")
-	fmt.Println("abcdef")
 
 	//dateStr := time.Now().Format("20060102") + strconv.Itoa(1)
 	//core.FtpGetFile(&config,dateStr)
@@ -63,98 +63,115 @@ func main() {
 
 	//core.FtpGetFile(&config,"")
 
-	//api测试
-	//mobileData:=&core.MobileData{"18320272979",""}
-	//typeResult,err:= mobileData.BroadbandTypeApi(config.QueryBroadbandTypeUrl)
-	//result,err:= typeResult.KdcheckrenewalsApi(config.QueryKdcheckrenewalsUrl)
-	//fmt.Println(result.KdAccount)
-
 	//启动先扫描一次
-	//Timerwork()
-	//timer := time.NewTicker(time.Hour * 10)
-	//for {
-	//	select {
-	//	case <-timer.C:
-	//		Timerwork()
-	//	}
-	//}
+	Timerwork()
+	timer := time.NewTicker(time.Hour * 10)
+	for {
+		select {
+		case <-timer.C:
+			Timerwork()
+		}
+	}
 
 }
 
 func Timerwork() {
-	for a := 1; a < 5; a++ {
-		go func(a int) {
-			defer func() {
-				recover()
-			}()
-			//先检查当前日期是否已经处理过业务
-			csvUtil := &core.CsvUtil{}
-			dateStr := time.Now().Format("20060102") + strconv.Itoa(a)
-			fmt.Println("dateStr" + dateStr)
-			b, err := csvUtil.IsExist(dateStr)
-			if err != nil {
-				core.Logger("csv error")
-				return
-			}
-			if b {
-				return
-			}
-			//下载文件
-			//filePath, err := core.FtpGetFile(&config, dateStr)
-			//if err != nil {
-			//	core.Logger("get ftp files error")
-			//	return
-			//}
-			filePath := "./files/JKGD20181107" + strconv.Itoa(a) + ".txt"
-			core.Logger("download file success :" + filePath)
-			//解析文件
-			data, err := core.AnalysisText(filePath)
-			if err != nil {
-				core.Logger("analysis dataFile error ")
-				return
-			}
-			core.Logger("analysis dataFile success :" + filePath)
-			//API,并发100个
-			var quit chan int
-			quit = make(chan int)
-			loopNum := 1000
-			if len(data) < 1000 {
-				loopNum = len(data)
-			}
-			interval := len(data) / 1000
-			fmt.Println("总数：" + strconv.Itoa(loopNum))
-			jkData := &([]core.KdcheckResult{})
-			//jkDataCh:=make(chan []core.KdcheckResult)
-			for i := 0; i < loopNum; i++ {
-				start := interval * i
-				end := interval*(i+1) - 1
-				if i == loopNum-1 {
-					start = interval * i
-					end = len(data) - 1
-				}
-				data2 := data[start:end]
-				go JKApi(data2, jkData, quit)
-			}
-			//信道出去
-			for i := 0; i < loopNum; i++ {
-				<-quit
-				core.Logger("第" + strconv.Itoa(i) + "信道out")
-			}
-			core.Logger(filePath + " 为宽带用户且返回成功总数：" + strconv.Itoa(len(*jkData)))
-			for _, data := range *jkData {
-				core.Logger(data.KdAccount + " is success")
-				fmt.Println(data.KdAccount)
-			}
 
-			//压缩文件
-			//加密文件
-			//上传文件
-
-			//最后所有操作成功后将文件日期名记录
-			csvUtil.Put(dateStr)
-			//调用通知接口
-		}(a)
+	csvUtil := &core.CsvUtil{}
+	dateStr := time.Now().Format("20060102")
+	fmt.Println("dateStr" + dateStr)
+	b, err := csvUtil.IsExist(dateStr)
+	if err != nil {
+		core.Logger("csv error")
+		return
 	}
+	if b {
+		return
+	}
+	//下载文件
+	filePath, err := core.FtpGetFile(&config, dateStr)
+	if err != nil {
+		core.Logger("get ftp files error")
+		return
+	}
+
+	//filePath := "./files/JKGD20181108" + strconv.Itoa(a) + ".txt"
+	core.Logger("download file success :" + filePath)
+	//解析文件
+	data, err := core.AnalysisText(filePath)
+	if err != nil {
+		core.Logger("analysis dataFile error ")
+		return
+	}
+	core.Logger("analysis dataFile success :" + filePath)
+	//API,并发100个
+	var quit chan int
+	jkData := &([]core.KdcheckResult{})
+	quit = make(chan int)
+	concurrencyNum := 10000 //并发数
+	if len(data) < concurrencyNum {
+		JKApi(data, jkData, quit)
+	} else {
+		interval := len(data) / concurrencyNum //每个并发线程所处理的数据量
+		fmt.Println("总并发数：" + strconv.Itoa(concurrencyNum))
+		for i := 0; i < concurrencyNum; i++ {
+			start := interval * i
+			end := interval*(i+1) - 1
+			if i == concurrencyNum-1 {
+				start = interval * i
+				end = len(data) - 1
+			}
+			data2 := data[start:end]
+			go JKApi(data2, jkData, quit)
+		}
+		//信道出去
+		for i := 0; i < concurrencyNum; i++ {
+			<-quit
+			core.Logger("第" + strconv.Itoa(i) + "信道out")
+		}
+	}
+	core.Logger(filePath + " 为宽带用户且返回成功总数：" + strconv.Itoa(len(*jkData)))
+	//模板并存储
+	formatFilePath := "./formatFiles/" + dateStr + ".txt"
+	formatFile, err := os.OpenFile(formatFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	defer formatFile.Close()
+	for _, data := range *jkData {
+		//core.Logger(data.KdAccount + " is success")
+		fmt.Println(data.KdAccount + "success")
+		fileContent := core.FormatJKText(&data)
+		buf := []byte(fileContent)
+		formatFile.Write(buf)
+	}
+	//baseZipPath := dateStr+".zip"
+	//压缩文件
+	//加密文件
+	//上传文件
+
+	//最后所有操作成功后将文件日期名记录
+	csvUtil.Put(dateStr)
+
+	//调用通知接口
+
+	//ch := make(chan int)
+	//for a := 1; a < 5; a++ {
+	//	go func(a int) {
+	//		defer func() {
+	//			recover()
+	//		}()
+	//		//先检查当前日期是否已经处理过业务
+	//
+	//	}(a)
+	//}
+
+	//for a := 1; a < 5; a++{
+	//	<-ch
+	//	dateStr := time.Now().Format("20060102") + strconv.Itoa(a)
+	//	path:="./formatFiles/"+dateStr+".txt"
+	//	b,_:=core.PathExists(path)
+	//	if b{
+	//		file,_:=ioutil.ReadFile(path)
+	//	}
+	//}
 
 }
 
@@ -164,28 +181,48 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 		quit <- 1 //finished
 		recover()
 	}()
-	fmt.Println(len(data))
+	threadStr := "线程：" + strconv.Itoa(GoID()) + "；总数" + strconv.Itoa(len(data))
+	fmt.Println(threadStr)
+	core.Logger(threadStr)
 	for _, number := range data {
 		//fmt.Println(number)
+		//if index%20==0{
+		//	indexStr:=threadStr+"；正处理第"+strconv.Itoa(index)+"个"
+		//	fmt.Println(indexStr)
+		//	core.Logger(indexStr)
+		//}
 		mobileData := &core.MobileData{number, ""}
 		typeResult, err := mobileData.BroadbandTypeApi(config.QueryBroadbandTypeUrl)
 		if err != nil || typeResult == nil {
-			//core.Logger("failure phone: " + mobileData.Mobile)
+			core.SyncLoggerNum(mobileData.Mobile)
 			continue
 		} else {
 			result, err := typeResult.KdcheckrenewalsApi(config.QueryKdcheckrenewalsUrl)
 			if err != nil || result == nil {
-				//core.Logger("failure phone: " + mobileData.Mobile)
+				core.SyncLoggerNum(mobileData.Mobile)
 				continue
 			} else {
-				mutex.Lock() //上锁，上锁后，被锁定的内容不会被两个或者多个线程同时竞争
+				//mutex.Lock() //上锁，上锁后，被锁定的内容不会被两个或者多个线程同时竞争
 				*jkData = append(*jkData, *result)
-				//core.Logger(result.KdAccount+" success!")
-				mutex.Unlock()
+				//mutex.Unlock()
 			}
 		}
 	}
-
+	threadStr2 := "线程：" + strconv.Itoa(GoID()) + " over"
+	fmt.Println(threadStr2)
+	core.Logger(threadStr2)
 	//core.Logger("")
 
+}
+
+//获取线程ID
+func GoID() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	GoroutineId, err := strconv.Atoi(idField)
+	if err != nil {
+		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return GoroutineId
 }
