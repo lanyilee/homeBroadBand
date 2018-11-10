@@ -3,6 +3,8 @@ package core
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"github.com/jlaffaye/ftp"
 	"gopkg.in/ini.v1"
@@ -15,7 +17,8 @@ import (
 	"time"
 )
 
-type Config struct { //配置文件要通过tag来指定配置文件中的名称
+type Config struct {
+	//配置文件要通过tag来指定配置文件中的名称
 	//api
 	QueryBroadbandTypeUrl   string `ini:"QueryBroadbandTypeUrl"`
 	QueryKdcheckrenewalsUrl string `ini:"QueryKdcheckrenewalsUrl"`
@@ -28,10 +31,17 @@ type Config struct { //配置文件要通过tag来指定配置文件中的名称
 	ToFtpLoginUser     string `ini:"ToFtpLoginUser"`
 	ToFtpLoginPassword string `ini:"ToFtpLoginPassword"`
 	ToFtpPath          string `ini:"ToFtpPath"`
+	//MD5
+	Md5 string `ini:"Md5"`
 	//des
 	DesKey string `ini:"DesKey"`
 	//fixed-time
 	FixedTime string `ini:"FixedTime"`
+	//zdapi
+	ZdNoticeUrl  string `ini:"ZdNoticeUrl"`
+	ZdNoticeUser string `ini:"ZdNoticeUser"`
+	ZdNoticePass string `ini:"ZdNoticePass"`
+	Comefrom     string `ini:"Comefrom"`
 }
 
 func Logger(strContent string) {
@@ -153,6 +163,13 @@ func Zip3DESDEncrypt(zipDesPath string, key string, cbc *CbcDesEncrypt) error {
 		return err
 	}
 	return nil
+}
+
+//生成32位MD5
+func MD532(text string) string {
+	ctx := md5.New()
+	ctx.Write([]byte(text))
+	return hex.EncodeToString(ctx.Sum(nil))
 }
 
 //用linux自带的openssl加密3DES-CBC,command的首参是openssl,不是平常的/bin/bash
@@ -302,10 +319,7 @@ func FtpGetFile(config *Config, dateStr string) (path string, err error) {
 			return "", err
 		}
 	}
-
 	return downloadPath, nil
-	//buf,err:= os.OpenFile("./files/123.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	//entry.Stor("/123.log",buf)
 }
 
 //FTP-Put操作
@@ -318,6 +332,15 @@ func FtpPutFile(config *Config, fileName string) error {
 		Logger("connect to ftp server error :" + config.ToFtpHost)
 		return err
 	}
+	Logger("connect to ftp server success :" + config.ToFtpHost)
+	//login
+	entry.Login(config.ToFtpLoginUser, config.ToFtpLoginPassword)
+	if err != nil {
+		Logger("ftp login error, user:" + config.ToFtpLoginUser + ";pass: " + config.ToFtpLoginPassword)
+		fmt.Println(err)
+		return err
+	}
+	Logger("ftp login success")
 	file, err := ioutil.ReadFile(basePath)
 	buf := bytes.NewReader(file)
 	err = entry.Stor(toPath, buf)

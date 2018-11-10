@@ -25,32 +25,20 @@ func init() {
 
 func main() {
 
-	//解密
-	//err:=core.Zip3DESDEncrypt("log/test.zip.des","12345678abcdefgh87654321",&core.CbcDesEncrypt{})
-	//if err!=nil{
-	//	log.Panic(err)
-	//}
-
 	//获取配置信息
 	configPath := "./config.conf"
 	config, _ = core.ReadConfig(configPath)
 
-	//dateStr := time.Now().Format("20060102") + strconv.Itoa(1)
-	//core.FtpGetFile(&config,dateStr)
-	//core.AnalysisText("./files/JKGD201811071.txt")
-
 	//对于固定时间的定时器，可以用sleep，到了时间才启动
-	//fixTime,err:= core.GetFixTime(&config)
-	//if err!=nil{
-	//	core.Logger("获取定时器固定时间出错！")
-	//	return
-	//}
-	//for fixTime.After(time.Now()) {
-	//	time.Sleep(time.Second * 1)
-	//}
-	//fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
-
-	//core.FtpGetFile(&config,"")
+	fixTime, err := core.GetFixTime(&config)
+	if err != nil {
+		core.Logger("获取定时器固定时间出错！")
+		return
+	}
+	for fixTime.After(time.Now()) {
+		time.Sleep(time.Second * 1)
+	}
+	fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
 
 	//启动先扫描一次
 	Timerwork()
@@ -77,35 +65,35 @@ func Timerwork() {
 	if b {
 		return
 	}
+
 	//下载文件
 	filePath, err := core.FtpGetFile(&config, dateStr)
 	if err != nil {
 		core.Logger("get ftp files error")
 		return
 	}
-
-	//filePath := "./files/JKGD20181108" + strconv.Itoa(a) + ".txt"
 	core.Logger("download file success :" + filePath)
 	//解析文件
+	//filePath := "./files/JKGD20181109.txt"
 	data, err := core.AnalysisText(filePath)
 	if err != nil {
 		core.Logger("analysis dataFile error ")
 		return
 	}
 	core.Logger("analysis dataFile success :" + filePath)
-	//API,并发100个
+	//API,并发8000个
 	var quit chan int
 	jkData := &([]core.KdcheckResult{})
 	quit = make(chan int)
-	concurrencyNum := 10000 //并发数
+	concurrencyNum := 8000 //并发数
 	if len(data) < concurrencyNum {
-		JKApi(data, jkData, quit)
+		//JKApi(data, jkData, quit)
 	} else {
 		interval := len(data) / concurrencyNum //每个并发线程所处理的数据量
 		fmt.Println("总并发数：" + strconv.Itoa(concurrencyNum))
 		for i := 0; i < concurrencyNum; i++ {
 			start := interval * i
-			end := interval*(i+1) - 1
+			end := interval * (i + 1)
 			if i == concurrencyNum-1 {
 				start = interval * i
 				end = len(data) - 1
@@ -142,40 +130,32 @@ func Timerwork() {
 	desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseZipPath)
 	if err != nil {
 		core.Logger("加密文件出错")
+		return
 	}
 	core.Logger("加密文件成功:" + desPath)
+
 	//上传文件
 	err = core.FtpPutFile(&config, baseZipPath+".des")
 	if err != nil {
 		core.Logger("上传文件出错")
+		return
 	}
 	core.Logger("上传文件成功")
 	//调用通知接口
-
+	baseDesPath := baseZipPath + ".des"
+	notice := &core.ZDNotice{}
+	notice.FilePath = "./formatFiles/" + baseDesPath
+	//notice.PhoneSum = strconv.Itoa(len(*jkData))
+	notice.PhoneSum = "8000"
+	err = notice.ZDNoticeApi(&config)
+	if err != nil {
+		fmt.Println(err)
+		core.Logger("调用账单通知接口出错")
+		return
+	}
+	core.Logger("调用账单通知接口成功")
 	//最后所有操作成功后将文件日期名记录
 	csvUtil.Put(dateStr)
-
-	//ch := make(chan int)
-	//for a := 1; a < 5; a++ {
-	//	go func(a int) {
-	//		defer func() {
-	//			recover()
-	//		}()
-	//		//先检查当前日期是否已经处理过业务
-	//
-	//	}(a)
-	//}
-
-	//for a := 1; a < 5; a++{
-	//	<-ch
-	//	dateStr := time.Now().Format("20060102") + strconv.Itoa(a)
-	//	path:="./formatFiles/"+dateStr+".txt"
-	//	b,_:=core.PathExists(path)
-	//	if b{
-	//		file,_:=ioutil.ReadFile(path)
-	//	}
-	//}
-
 }
 
 //同步调用家宽api
@@ -184,16 +164,10 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 		quit <- 1 //finished
 		recover()
 	}()
-	threadStr := "线程：" + strconv.Itoa(GoID()) + "；总数" + strconv.Itoa(len(data))
+	threadStr := "线程" + strconv.Itoa(GoID()) + ",总数" + strconv.Itoa(len(data)) + ";"
 	//fmt.Println(threadStr)
 	core.Logger(threadStr)
 	for _, number := range data {
-		//fmt.Println(number)
-		//if index%20==0{
-		//	indexStr:=threadStr+"；正处理第"+strconv.Itoa(index)+"个"
-		//	fmt.Println(indexStr)
-		//	core.Logger(indexStr)
-		//}
 		mobileData := &core.MobileData{number, ""}
 		typeResult, err := mobileData.BroadbandTypeApi(config.QueryBroadbandTypeUrl)
 		if err != nil || typeResult == nil {
@@ -211,7 +185,7 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 			}
 		}
 	}
-	threadStr2 := "线程：" + strconv.Itoa(GoID()) + " over"
+	threadStr2 := "线程：" + strconv.Itoa(GoID()) + " over;"
 	//fmt.Println(threadStr2)
 	core.Logger(threadStr2)
 	//core.Logger("")
