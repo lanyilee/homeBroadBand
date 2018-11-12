@@ -350,3 +350,34 @@ func FtpPutFile(config *Config, fileName string) error {
 	}
 	return nil
 }
+
+//SFTP-PUT 操作
+func SFtpPutFile(config *Config, fileName string) error {
+	basePath := "./formatFiles/" + fileName
+	toPath := config.ToFtpPath + fileName
+	//
+
+	entry, err := ftp.Connect(config.ToFtpHost)
+	defer entry.Quit()
+	if err != nil {
+		Logger("connect to ftp server error :" + config.ToFtpHost)
+		return err
+	}
+	Logger("connect to ftp server success :" + config.ToFtpHost)
+	//login
+	entry.Login(config.ToFtpLoginUser, config.ToFtpLoginPassword)
+	if err != nil {
+		Logger("ftp login error, user:" + config.ToFtpLoginUser + ";pass: " + config.ToFtpLoginPassword)
+		fmt.Println(err)
+		return err
+	}
+	Logger("ftp login success")
+	file, err := ioutil.ReadFile(basePath)
+	buf := bytes.NewReader(file)
+	err = entry.Stor(toPath, buf)
+	if err != nil {
+		Logger("upload file to ftp server error :" + basePath)
+		return err
+	}
+	return nil
+}

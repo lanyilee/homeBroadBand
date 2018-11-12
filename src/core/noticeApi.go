@@ -38,8 +38,10 @@ type BODY struct {
 }
 
 type REEAMIL struct {
-	head REHEAD `xml:"HEAD"`
-	body string `xml:"BODY"`
+	EMAIL xml.Name `xml:"EMAIL"`
+	HEAD  REHEAD   `xml:"HEAD"`
+	BODY  string   `xml:"BODY"`
+	//body string `xml:"BODY"`
 }
 type REHEAD struct {
 	VERSION   string `xml:"VERSION"`   //版本，默认0200
@@ -53,6 +55,8 @@ type REHEAD struct {
 	RSPTIME   string `xml:"RSPTIME"`   //接口应答时间，YYYYMMDD HH24:MI:SS
 	RETCODE   string `xml:"RETCODE"`   //统一返回码
 	RETDESC   string `xml:"RETDESC"`   //返回码对应描述
+}
+type REBODY struct {
 }
 
 func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
@@ -126,11 +130,11 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 		Logger("通知接口xml数据转化出错")
 		return err
 	}
-	if reEmail.head.RETCODE == "200" {
+	if reEmail.HEAD.RETCODE == "200" {
 		Logger("调用通知接口成功")
 		return nil
 	} else {
-		Logger("调用通知接口失败,返回码：" + reEmail.head.RETCODE + ",返回信息：" + reEmail.head.RETDESC)
+		Logger("调用通知接口失败,返回码：" + reEmail.HEAD.RETCODE + ",返回信息：" + reEmail.HEAD.RETDESC)
 		Logger("请求报文：" + xmlDataLog)
 		Logger("返回报文：" + string(respBytes))
 	}
