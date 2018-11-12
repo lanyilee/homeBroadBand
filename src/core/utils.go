@@ -354,30 +354,27 @@ func FtpPutFile(config *Config, fileName string) error {
 //SFTP-PUT 操作
 func SFtpPutFile(config *Config, fileName string) error {
 	basePath := "./formatFiles/" + fileName
-	toPath := config.ToFtpPath + fileName
 	//
-
-	entry, err := ftp.Connect(config.ToFtpHost)
-	defer entry.Quit()
+	cmd := exec.Command("./sftpput.sh", config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, config.ToFtpPath, basePath)
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		Logger("connect to ftp server error :" + config.ToFtpHost)
+		Logger("sftp stdout error")
 		return err
 	}
-	Logger("connect to ftp server success :" + config.ToFtpHost)
-	//login
-	entry.Login(config.ToFtpLoginUser, config.ToFtpLoginPassword)
-	if err != nil {
-		Logger("ftp login error, user:" + config.ToFtpLoginUser + ";pass: " + config.ToFtpLoginPassword)
-		fmt.Println(err)
+	//执行命令
+	if err := cmd.Start(); err != nil {
+		Logger("Error:The command is err")
 		return err
 	}
-	Logger("ftp login success")
-	file, err := ioutil.ReadFile(basePath)
-	buf := bytes.NewReader(file)
-	err = entry.Stor(toPath, buf)
+	//读取所有输出
+	_, err = ioutil.ReadAll(stdout)
 	if err != nil {
-		Logger("upload file to ftp server error :" + basePath)
 		return err
 	}
+	if err := cmd.Wait(); err != nil {
+		Logger("wait error")
+		return err
+	}
+	Logger("put sftp file success:")
 	return nil
 }
