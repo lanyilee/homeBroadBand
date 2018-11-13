@@ -1,8 +1,10 @@
 package main
 
 import (
+	"archive/zip"
 	"core"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -38,21 +40,6 @@ func main() {
 	}
 	fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
 
-	//调用通知接口
-	//baseZipPath := "20181109.zip"
-	//baseDesPath := baseZipPath + ".des"
-	//notice := &core.ZDNotice{}
-	//notice.FilePath = "/" + baseDesPath
-	////notice.PhoneSum = strconv.Itoa(len(*jkData))
-	//notice.PhoneSum = "8000"
-	//err = notice.ZDNoticeApi(&config)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	core.Logger("调用账单通知接口出错")
-	//	return
-	//}
-	//core.Logger("调用账单通知接口成功")
-
 	//启动先扫描一次
 	Timerwork()
 	timer := time.NewTicker(time.Hour * 10)
@@ -80,87 +67,86 @@ func Timerwork() {
 	}
 
 	//下载文件
-	//filePath, err := core.FtpGetFile(&config, dateStr)
-	//if err != nil {
-	//	core.Logger("get ftp files error")
-	//	return
-	//}
-	//core.Logger("download file success :" + filePath)
+	filePath, err := core.FtpGetFile(&config, dateStr)
+	if err != nil {
+		core.Logger("get ftp files error")
+		return
+	}
+	core.Logger("download file success :" + filePath)
 
 	//解析文件
 	//filePath := "./files/JKGD20181109.txt"
-	//data, err := core.AnalysisText(filePath)
-	//if err != nil {
-	//	core.Logger("analysis dataFile error ")
-	//	return
-	//}
-	//core.Logger("analysis dataFile success :" + filePath)
+	data, err := core.AnalysisText(filePath)
+	if err != nil {
+		core.Logger("analysis dataFile error ")
+		return
+	}
+	core.Logger("analysis dataFile success :" + filePath)
 
 	//API,并发8000个
-	//var quit chan int
-	//jkData := &([]core.KdcheckResult{})
-	//quit = make(chan int)
-	//concurrencyNum := 8000 //并发数
-	//if len(data) < concurrencyNum {
-	//	//JKApi(data, jkData, quit)
-	//} else {
-	//	interval := len(data) / concurrencyNum //每个并发线程所处理的数据量
-	//	lastNum:=len(data)-interval*concurrencyNum
-	//	//如果最后一条线程处理数量远大于前面线程平均的数量，就要根据平均数增加线程
-	//	if lastNum>=interval{
-	//		addNum:=lastNum/interval
-	//		concurrencyNum = concurrencyNum+addNum
-	//	}
-	//	fmt.Println("总并发数：" + strconv.Itoa(concurrencyNum))
-	//	for i := 0; i < concurrencyNum; i++ {
-	//		start := interval * i
-	//		end := interval * (i + 1)
-	//		if i == concurrencyNum-1 {
-	//			start = interval * i
-	//			end = len(data) - 1
-	//		}
-	//		data2 := data[start:end]
-	//		go JKApi(data2, jkData, quit)
-	//	}
-	//	//信道出去
-	//	for i := 0; i < concurrencyNum; i++ {
-	//		<-quit
-	//		core.Logger("第" + strconv.Itoa(i) + "信道out")
-	//	}
-	//}
-	//core.Logger(filePath + " 为宽带用户且返回成功总数：" + strconv.Itoa(len(*jkData)))
+	var quit chan int
+	jkData := &([]core.KdcheckResult{})
+	quit = make(chan int)
+	concurrencyNum := 8000 //并发数
+	if len(data) < concurrencyNum {
+		//JKApi(data, jkData, quit)
+	} else {
+		interval := len(data) / concurrencyNum //每个并发线程所处理的数据量
+		lastNum := len(data) - interval*concurrencyNum
+		//如果最后一条线程处理数量远大于前面线程平均的数量，就要根据平均数增加线程
+		if lastNum >= interval {
+			addNum := lastNum / interval
+			concurrencyNum = concurrencyNum + addNum
+		}
+		fmt.Println("总并发数：" + strconv.Itoa(concurrencyNum))
+		for i := 0; i < concurrencyNum; i++ {
+			start := interval * i
+			end := interval * (i + 1)
+			if i == concurrencyNum-1 {
+				start = interval * i
+				end = len(data) - 1
+			}
+			data2 := data[start:end]
+			go JKApi(data2, jkData, quit)
+		}
+		//信道出去
+		for i := 0; i < concurrencyNum; i++ {
+			<-quit
+			core.Logger("第" + strconv.Itoa(i) + "信道out")
+		}
+	}
+	core.Logger(filePath + " 为宽带用户且返回成功总数：" + strconv.Itoa(len(*jkData)))
 
 	//模板并存储
-	//formatFilePath := "./formatFiles/JKGD" + dateStr + ".txt"
-	//formatFile, err := os.OpenFile(formatFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	//for _, data := range *jkData {
-	//	fileContent := core.FormatJKText(&data)
-	//	buf := []byte(fileContent)
-	//	formatFile.Write(buf)
-	//}
-	//formatFile.Close()
+	formatFilePath := "./formatFiles/JKGD" + dateStr + ".txt"
+	formatFile, err := os.OpenFile(formatFilePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	for _, data := range *jkData {
+		fileContent := core.FormatJKText(&data)
+		buf := []byte(fileContent)
+		formatFile.Write(buf)
+	}
+	formatFile.Close()
 
 	//压缩文件
-	//baseZipPath := "JKGD" + dateStr + ".zip"
-	//logzip, _ := os.Create("./formatFiles/" + baseZipPath)
-	//defer logzip.Close()
-	//w := zip.NewWriter(logzip)
-	//defer w.Close()
-	//formatFile, _ = os.OpenFile(formatFilePath, os.O_RDWR, 0777)
-	//core.CompressSingle(formatFile, "", w)
-	//core.Logger("压缩文件成功")
+	baseZipPath := "JKGD" + dateStr + ".zip"
+	logzip, _ := os.Create("./formatFiles/" + baseZipPath)
+	defer logzip.Close()
+	w := zip.NewWriter(logzip)
+	defer w.Close()
+	formatFile, _ = os.OpenFile(formatFilePath, os.O_RDWR, 0777)
+	core.CompressSingle(formatFile, "", w)
+	core.Logger("压缩文件成功")
 
 	//加密文件
-	//desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseZipPath)
-	//if err != nil {
-	//	core.Logger("加密文件出错")
-	//	return
-	//}
-	//core.Logger("加密文件成功:" + desPath)
+	desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseZipPath)
+	if err != nil {
+		core.Logger("加密文件出错")
+		return
+	}
+	core.Logger("加密文件成功:" + desPath)
 
 	//上传文件
-	baseZipPath := "20181109.zip"
-	err = core.FtpPutFile(&config, baseZipPath+".des")
+	err = core.SFtpPutFile(&config, baseZipPath+".des")
 	if err != nil {
 		core.Logger("上传文件出错")
 		return
@@ -168,11 +154,10 @@ func Timerwork() {
 	core.Logger("上传文件成功")
 
 	//调用通知接口
-	baseDesPath := baseZipPath + ".des"
+	baseDesPath := "20181109.zip.des"
 	notice := &core.ZDNotice{}
-	notice.FilePath = "./formatFiles/" + baseDesPath
-	//notice.PhoneSum = strconv.Itoa(len(*jkData))
-	notice.PhoneSum = "8000"
+	notice.FilePath = "./lanyi/" + baseDesPath
+	notice.PhoneSum = strconv.Itoa(len(*jkData))
 	err = notice.ZDNoticeApi(&config)
 	if err != nil {
 		fmt.Println(err)

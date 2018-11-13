@@ -355,7 +355,7 @@ func FtpPutFile(config *Config, fileName string) error {
 func SFtpPutFile(config *Config, fileName string) error {
 	basePath := "./formatFiles/" + fileName
 	//
-	cmd := exec.Command("./sftpput.sh", config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, config.ToFtpPath, basePath)
+	cmd := exec.Command("sh", "./sftpput.sh", config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, config.ToFtpPath, basePath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		Logger("sftp stdout error")
@@ -372,6 +372,11 @@ func SFtpPutFile(config *Config, fileName string) error {
 		return err
 	}
 	if err := cmd.Wait(); err != nil {
+		fmt.Println(err)
+		if strings.Contains(err.Error(), "255") {
+			Logger("put sftp file success:")
+			return nil
+		}
 		Logger("wait error")
 		return err
 	}
