@@ -362,22 +362,31 @@ func SFtpPutFile(config *Config, fileName string) error {
 		return err
 	}
 	//执行命令
+	//err = cmd.Run()
+	//if err != nil {
+	//	Logger("Error:The command is err")
+	//	fmt.Println(err)
+	//	return err
+	//}
 	if err := cmd.Start(); err != nil {
 		Logger("Error:The command is err")
 		return err
 	}
 	//读取所有输出
-	_, err = ioutil.ReadAll(stdout)
+	str, err := ioutil.ReadAll(stdout)
 	if err != nil {
 		return err
 	}
+	mes := string(str)
+	fmt.Println(mes)
 	if err := cmd.Wait(); err != nil {
-		fmt.Println(err)
-		if strings.Contains(err.Error(), "255") {
+		if strings.Contains(mes, "success") {
 			Logger("put sftp file success:")
+			fmt.Println(err)
 			return nil
 		}
-		Logger("wait error")
+		Logger("wait error:" + string(str) + ";")
+		fmt.Println(err)
 		return err
 	}
 	Logger("put sftp file success:")

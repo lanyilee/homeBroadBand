@@ -118,6 +118,7 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 		Logger("请求报文：" + xmlDataLog)
 		return err
 	}
+	Logger("请求报文：" + xmlDataLog)
 	//读取xml流
 
 	reEmail := &REEAMIL{}
@@ -132,6 +133,7 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 	}
 	if reEmail.HEAD.RETCODE == "200" {
 		Logger("调用通知接口成功")
+		Logger("返回报文：" + string(respBytes))
 		return nil
 	} else {
 		Logger("调用通知接口失败,返回码：" + reEmail.HEAD.RETCODE + ",返回信息：" + reEmail.HEAD.RETDESC)

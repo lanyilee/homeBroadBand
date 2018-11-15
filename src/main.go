@@ -89,7 +89,22 @@ func Timerwork() {
 	quit = make(chan int)
 	concurrencyNum := 8000 //并发数
 	if len(data) < concurrencyNum {
-		//JKApi(data, jkData, quit)
+		for _, number := range data {
+			mobileData := &core.MobileData{number, ""}
+			typeResult, err := mobileData.BroadbandTypeApi(config.QueryBroadbandTypeUrl)
+			if err != nil || typeResult == nil {
+				core.SyncLoggerNum(mobileData.Mobile)
+				continue
+			} else {
+				result, err := typeResult.KdcheckrenewalsApi(config.QueryKdcheckrenewalsUrl)
+				if err != nil || result == nil {
+					core.SyncLoggerNum(mobileData.Mobile)
+					continue
+				} else {
+					*jkData = append(*jkData, *result)
+				}
+			}
+		}
 	} else {
 		interval := len(data) / concurrencyNum //每个并发线程所处理的数据量
 		lastNum := len(data) - interval*concurrencyNum
@@ -154,9 +169,10 @@ func Timerwork() {
 	core.Logger("上传文件成功")
 
 	//调用通知接口
-	baseDesPath := "20181109.zip.des"
+	baseDesPath := baseZipPath + ".des"
 	notice := &core.ZDNotice{}
-	notice.FilePath = "./lanyi/" + baseDesPath
+	toftpPath := string([]byte(config.ToFtpPath)[1:])
+	notice.FilePath = "sftp://" + config.ToFtpHost + toftpPath + "/" + baseDesPath
 	notice.PhoneSum = strconv.Itoa(len(*jkData))
 	err = notice.ZDNoticeApi(&config)
 	if err != nil {
