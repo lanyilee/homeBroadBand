@@ -40,9 +40,16 @@ func main() {
 	}
 	fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
 
+	//baseDesPath :=  "20181109.zip.des"
+	//notice := &core.ZDNotice{}
+	//toftpPath := string([]byte(config.ToFtpPath)[1:])
+	//notice.FilePath = "./formatFiles/"+baseDesPath
+	//notice.FtpsFilePath = "sftp://" + config.ToFtpHost + toftpPath + "/" + baseDesPath
+	//err = notice.ZDNoticeApi(&config)
+
 	//启动先扫描一次
 	Timerwork()
-	timer := time.NewTicker(time.Hour * 10)
+	timer := time.NewTicker(time.Hour * 24)
 	for {
 		select {
 		case <-timer.C:
@@ -161,7 +168,7 @@ func Timerwork() {
 	core.Logger("加密文件成功:" + desPath)
 
 	//上传文件
-	err = core.SFtpPutFile(&config, baseZipPath+".des")
+	err = core.FtpsPutFile(&config, baseZipPath+".des")
 	if err != nil {
 		core.Logger("上传文件出错")
 		return
@@ -171,8 +178,9 @@ func Timerwork() {
 	//调用通知接口
 	baseDesPath := baseZipPath + ".des"
 	notice := &core.ZDNotice{}
-	toftpPath := string([]byte(config.ToFtpPath)[1:])
-	notice.FilePath = "sftp://" + config.ToFtpHost + toftpPath + "/" + baseDesPath
+	//toftpPath := string([]byte(config.ToFtpPath)[1:])
+	notice.FilePath = "./formatFiles/" + baseDesPath
+	notice.FtpsFilePath = "ftp://" + config.ToFtpHost + "/" + baseDesPath
 	notice.PhoneSum = strconv.Itoa(len(*jkData))
 	err = notice.ZDNoticeApi(&config)
 	if err != nil {

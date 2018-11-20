@@ -2,7 +2,9 @@ package core
 
 import (
 	"bytes"
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/xml"
 	"io/ioutil"
 	"net/http"
@@ -14,8 +16,9 @@ import (
 //账单通知接口
 
 type ZDNotice struct {
-	FilePath string //文件相对路径
-	PhoneSum string //用户数
+	FtpsFilePath string //ftps文件相对路径
+	PhoneSum     string //用户数
+	FilePath     string //文件路径
 }
 
 type EMAIL struct {
@@ -74,7 +77,16 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 	head.REQTIME = timeSt
 	timeUnix := strconv.FormatInt(time.Now().Unix(), 10)
 	//文件的相对路径,MD5校验码,解密密码,用户数
-	billingFile := notice.FilePath + "," + config.Md5 + "," + config.DesKey + "," + notice.PhoneSum
+	fileData, err := ioutil.ReadFile(notice.FilePath)
+	if err != nil {
+		Logger("打开des文件失败")
+		return err
+	}
+	ctx := md5.New()
+	ctx.Write(fileData)
+	fileMd5 := hex.EncodeToString(ctx.Sum(nil))
+	fileMd5 = strings.ToUpper(fileMd5)
+	billingFile := notice.FtpsFilePath + "," + fileMd5 + "," + config.DesKey + "," + notice.PhoneSum
 	//SKEY=Md5(COMEFROM + COMMANDID + TIMESTAMP + BILLINGFILE + KEY) ，key为body对应账号的密码
 	skeyStr := head.COMEFROM + head.COMMANDID + timeUnix + billingFile + config.ZdNoticePass
 	//skeyData:=[]byte(skeyStr)

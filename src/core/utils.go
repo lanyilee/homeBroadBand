@@ -30,9 +30,8 @@ type Config struct {
 	ToFtpHost          string `ini:"ToFtpHost"`
 	ToFtpLoginUser     string `ini:"ToFtpLoginUser"`
 	ToFtpLoginPassword string `ini:"ToFtpLoginPassword"`
-	ToFtpPath          string `ini:"ToFtpPath"`
-	//MD5
-	Md5 string `ini:"Md5"`
+	FtpsCertFile       string `ini:"FtpsCertFile"`
+	FtpsKeyFile        string `ini:"FtpsKeyFile"`
 	//des
 	DesKey string `ini:"DesKey"`
 	//fixed-time
@@ -325,7 +324,7 @@ func FtpGetFile(config *Config, dateStr string) (path string, err error) {
 //FTP-Put操作
 func FtpPutFile(config *Config, fileName string) error {
 	basePath := "./formatFiles/" + fileName
-	toPath := config.ToFtpPath + fileName
+	toPath := "./" + fileName
 	entry, err := ftp.Connect(config.ToFtpHost)
 	defer entry.Quit()
 	if err != nil {
@@ -355,7 +354,7 @@ func FtpPutFile(config *Config, fileName string) error {
 func SFtpPutFile(config *Config, fileName string) error {
 	basePath := "./formatFiles/" + fileName
 	//
-	cmd := exec.Command("sh", "./sftpput.sh", config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, config.ToFtpPath, basePath)
+	cmd := exec.Command("sh", "./sftpput.sh", config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, "./", basePath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		Logger("sftp stdout error")
@@ -390,5 +389,40 @@ func SFtpPutFile(config *Config, fileName string) error {
 		return err
 	}
 	Logger("put sftp file success:")
+	return nil
+}
+
+//FTPs-Put 操作
+func FtpsPutFile(config *Config, fileName string) error {
+	basePath := "./formatFiles/" + fileName
+	//
+	cmd := exec.Command("sh", "./ftpsput.sh", config.FtpsCertFile, config.FtpsKeyFile, config.ToFtpHost, config.ToFtpLoginUser, config.ToFtpLoginPassword, basePath)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		Logger("ftps stdout error")
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		Logger("Error:The command is err")
+		return err
+	}
+	//读取所有输出
+	str, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return err
+	}
+	mes := string(str)
+	fmt.Println(mes)
+	if err := cmd.Wait(); err != nil {
+		if strings.Contains(mes, "success") {
+			Logger("put ftps file success:")
+			fmt.Println(err)
+			return nil
+		}
+		Logger("wait error:" + string(str) + ";")
+		fmt.Println(err)
+		return err
+	}
+	Logger("put ftps file success:")
 	return nil
 }
