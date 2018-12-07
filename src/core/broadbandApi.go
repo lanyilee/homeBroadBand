@@ -26,6 +26,7 @@ type KdcheckResult struct {
 	DateTouse      string
 	LastDate       string
 	BroadSpeed     string
+	accounttype    string
 }
 
 type ResultData struct {
@@ -114,6 +115,8 @@ func (data *TypeResult) KdcheckrenewalsApi(url string) (KCheck *KdcheckResult, e
 		//这里返回的是数组json[{}]结构，所以和上面那个api的处理不一样
 		result.ResultContent = result.ResultContent[1 : len(result.ResultContent)-1]
 		json.Unmarshal(result.ResultContent, KCheck)
+		//宽带类型加上
+		KCheck.accounttype = data.Accounttype
 		return KCheck, nil
 	} else {
 		//_ := (string)(respBytes)

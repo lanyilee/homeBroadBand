@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/zip"
 	"core"
 	"fmt"
 	"os"
@@ -40,12 +39,9 @@ func main() {
 	}
 	fmt.Println("start now" + time.Now().Format("2006-01-02 15:04:05"))
 
-	//baseDesPath :=  "20181109.zip.des"
-	//notice := &core.ZDNotice{}
-	//toftpPath := string([]byte(config.ToFtpPath)[1:])
-	//notice.FilePath = "./formatFiles/"+baseDesPath
-	//notice.FtpsFilePath = "sftp://" + config.ToFtpHost + toftpPath + "/" + baseDesPath
-	//err = notice.ZDNoticeApi(&config)
+	//KdAccount:="18320272979"
+	//phoneNum:=subString(KdAccount,0,3)+"****"+subString(KdAccount,7,11)
+	//fmt.Println(phoneNum)
 
 	//启动先扫描一次
 	Timerwork()
@@ -57,6 +53,18 @@ func main() {
 		}
 	}
 
+}
+
+func subString(str string, start, end int) string {
+	rs := []rune(str)
+	length := len(rs)
+	if start < 0 || start > length {
+		panic("start is wrong")
+	}
+	if end < start || end > length {
+		panic("end is wrong")
+	}
+	return string(rs[start:end])
 }
 
 func Timerwork() {
@@ -82,7 +90,7 @@ func Timerwork() {
 	core.Logger("download file success :" + filePath)
 
 	//解析文件
-	//filePath := "./files/JKGD20181109.txt"
+	//filePath := "./files/xaa.txt"
 	data, err := core.AnalysisText(filePath)
 	if err != nil {
 		core.Logger("analysis dataFile error ")
@@ -94,7 +102,7 @@ func Timerwork() {
 	var quit chan int
 	jkData := &([]core.KdcheckResult{})
 	quit = make(chan int)
-	concurrencyNum := 8000 //并发数
+	concurrencyNum := 1000 //并发数
 	if len(data) < concurrencyNum {
 		for _, number := range data {
 			mobileData := &core.MobileData{number, ""}
@@ -150,17 +158,16 @@ func Timerwork() {
 	formatFile.Close()
 
 	//压缩文件
-	baseZipPath := "JKGD" + dateStr + ".zip"
-	logzip, _ := os.Create("./formatFiles/" + baseZipPath)
-	defer logzip.Close()
-	w := zip.NewWriter(logzip)
-	defer w.Close()
-	formatFile, _ = os.OpenFile(formatFilePath, os.O_RDWR, 0777)
-	core.CompressSingle(formatFile, "", w)
+	err = core.CompressFile(formatFilePath)
+	if err != nil {
+		core.Logger("压缩文件出错")
+		return
+	}
 	core.Logger("压缩文件成功")
 
 	//加密文件
-	desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseZipPath)
+	baseGzPath := "JKGD" + dateStr + ".txt.gz"
+	desPath, err := core.Encrypt3DESByOpenssl(config.DesKey, baseGzPath)
 	if err != nil {
 		core.Logger("加密文件出错")
 		return
@@ -168,7 +175,7 @@ func Timerwork() {
 	core.Logger("加密文件成功:" + desPath)
 
 	//上传文件
-	err = core.FtpsPutFile(&config, baseZipPath+".des")
+	err = core.FtpsPutFile(&config, baseGzPath+".des")
 	if err != nil {
 		core.Logger("上传文件出错")
 		return
@@ -176,11 +183,11 @@ func Timerwork() {
 	core.Logger("上传文件成功")
 
 	//调用通知接口
-	baseDesPath := baseZipPath + ".des"
+	baseDesPath := baseGzPath + ".des"
 	notice := &core.ZDNotice{}
 	//toftpPath := string([]byte(config.ToFtpPath)[1:])
 	notice.FilePath = "./formatFiles/" + baseDesPath
-	notice.FtpsFilePath = "ftp://" + config.ToFtpHost + "/" + baseDesPath
+	notice.FtpsFilePath = "ftps://" + config.ToFtpHost + "/" + baseDesPath
 	notice.PhoneSum = strconv.Itoa(len(*jkData))
 	err = notice.ZDNoticeApi(&config)
 	if err != nil {
@@ -194,7 +201,7 @@ func Timerwork() {
 }
 
 //同步调用家宽api
-func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
+func JKApi(data []string, jkData *[]core.KdcheckResult, quit chan int) {
 	defer func() {
 		quit <- 1 //finished
 		recover()
@@ -214,9 +221,10 @@ func JKApi(data []string, jkData *([]core.KdcheckResult), quit chan int) {
 				core.SyncLoggerNum(mobileData.Mobile)
 				continue
 			} else {
-				//mutex.Lock() //上锁，上锁后，被锁定的内容不会被两个或者多个线程同时竞争
+				//fmt.Println(number)
+				mutex.Lock() //上锁，上锁后，被锁定的内容不会被两个或者多个线程同时竞争
 				*jkData = append(*jkData, *result)
-				//mutex.Unlock()
+				mutex.Unlock()
 			}
 		}
 	}

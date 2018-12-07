@@ -175,6 +175,7 @@ func MD532(text string) string {
 func Encrypt3DESByOpenssl(key string, fileName string) (desPath string, err error) {
 	filePath := "./formatFiles/" + fileName
 	desPath = filePath + ".des"
+	fmt.Println("将要加密的文件地址：" + filePath)
 	cmd := exec.Command("openssl", "enc", "-des-ede3-cbc", "-e", "-k", key, "-in", filePath, "-out", desPath)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -239,8 +240,53 @@ func AnalysisText(filePath string) (numbers []string, err error) {
 
 //重构文本-模板
 func FormatJKText(kd *KdcheckResult) string {
-	str := "START|" + kd.KdAccount + "\n" + "宽带属性|" + kd.KdAccount + "~家庭宽带~" + kd.UserStatus + "~" + kd.IsYearPackAge + "~" + kd.LastDate + "~" + kd.BroadSpeed + "|010000\nEND\n"
+	accounttype := ""
+	if kd.accounttype == "1" {
+		accounttype = "手机宽带"
+	} else if kd.accounttype == "2" {
+		accounttype = "裸宽宽带"
+	} else {
+		accounttype = "其他宽带"
+	}
+	isYearPackAge := "否"
+	if kd.IsYearPackAge == "1" {
+		isYearPackAge = "是"
+	}
+	//str := "START|" + kd.KdAccount + "|\n" + "宽带属性|" + accounttype + "~家庭宽带~" + kd.UserStatus + "~" + isYearPackAge + "~" + kd.LastDate + "~" + kd.BroadSpeed + "|010000\nEND\n"
+	//脱敏
+	//phoneNum:=subString(kd.KdAccount,0,3)+"****"+subString(kd.KdAccount,7,11)
+	str := "START|" + kd.KdAccount + "|\n" + "宽带属性|" + kd.KdAccount + "~" + accounttype + "~" + kd.UserStatus + "~" + isYearPackAge + "~" + kd.LastDate + "~" + kd.BroadSpeed + "|010000\nEND\n"
+	//utf8->gbk
+	str = Encode(str)
 	return str
+}
+
+//gz 命令压缩
+func CompressFile(formatFilePath string) error {
+	//zipPath ="./formatFiles/"+zipPath
+	cmd := exec.Command("gzip", formatFilePath)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		Logger("compressFile Error:can not obtain stdout pipe for command")
+		return err
+	}
+	//执行命令
+	if err := cmd.Start(); err != nil {
+		Logger("compressFile Error:The command is err")
+		return err
+	}
+	//读取所有输出
+	_, err = ioutil.ReadAll(stdout)
+	if err != nil {
+		return err
+	}
+	if err := cmd.Wait(); err != nil {
+		Logger("compressFile wait error")
+		fmt.Println(err)
+		return err
+	}
+	Logger("compressFile success:" + formatFilePath + ".gz")
+	return nil
 }
 
 //取定时时间
