@@ -43,12 +43,35 @@ func main() {
 	//phoneNum:=subString(KdAccount,0,3)+"****"+subString(KdAccount,7,11)
 	//fmt.Println(phoneNum)
 
+	//调用通知接口
+	//baseGzPath:="JKGD20181215.txt.gz"
+	//baseDesPath := baseGzPath + ".des"
+	//notice := &core.ZDNotice{}
+	////toftpPath := string([]byte(config.ToFtpPath)[1:])
+	//notice.FilePath = "./formatFiles/" + baseDesPath
+	//notice.FtpsFilePath = "ftps://" + config.ToFtpHost + "/" + baseDesPath
+	//notice.PhoneSum ="12"
+	//err = notice.ZDNoticeApi(&config)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	core.Logger("调用账单通知接口出错")
+	//	return
+	//}
+
 	//启动先扫描一次
 	Timerwork()
-	timer := time.NewTicker(time.Hour * 24)
+	timer := time.NewTicker(time.Minute*30)
 	for {
 		select {
 		case <-timer.C:
+			//设置时间
+			local,_:=time.LoadLocation("Local")
+			nowTime:=time.Now()
+			toFixTimeStr:=nowTime.Format("2006")+"-"+nowTime.Format("01") +"-"+nowTime.Format("02")+" "+fixTime.Format("15")+":"+fixTime.Format("04")+":"+fixTime.Format("05")
+			toFixTime,_:=time.ParseInLocation("2006-01-02 15:04:05",toFixTimeStr,local)
+			for toFixTime.After(time.Now()){
+				time.Sleep(time.Second * 1)
+			}
 			Timerwork()
 		}
 	}
@@ -102,7 +125,7 @@ func Timerwork() {
 	var quit chan int
 	jkData := &([]core.KdcheckResult{})
 	quit = make(chan int)
-	concurrencyNum := 1000 //并发数
+	concurrencyNum := 8000 //并发数
 	if len(data) < concurrencyNum {
 		for _, number := range data {
 			mobileData := &core.MobileData{number, ""}

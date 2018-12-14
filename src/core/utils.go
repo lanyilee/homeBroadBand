@@ -40,6 +40,8 @@ type Config struct {
 	ZdNoticeUrl  string `ini:"ZdNoticeUrl"`
 	ZdNoticeUser string `ini:"ZdNoticeUser"`
 	ZdNoticePass string `ini:"ZdNoticePass"`
+	ZdClientCert string `ini:"ZdClientCert"`
+	ZdClientKey string `ini:"ZdClientKey"`
 	Comefrom     string `ini:"Comefrom"`
 }
 

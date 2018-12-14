@@ -111,9 +111,20 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 		return err
 	}
 
-	//省略校验https证书
+	//证书
+	clientCrt,err:=tls.LoadX509KeyPair(config.ZdClientCert,config.ZdClientKey)
+	if err != nil {
+		Logger("加载通知接口客户端证书失败")
+		return err
+	}
+
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		//省略校验https证书
+		//TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:&tls.Config{
+			InsecureSkipVerify: true,
+			Certificates:[]tls.Certificate{clientCrt},
+		},
 	}
 	clent := &http.Client{Transport: tr}
 	clent.Timeout = time.Minute * 2
@@ -137,10 +148,12 @@ func (notice *ZDNotice) ZDNoticeApi(config *Config) error {
 	//gbk to uft，先把编码转成utf-8，还要把xml文本的gbk替换成UTF-8，xml.Unmarshal才不会出错
 	decoStr := Decode(string(respBytes))
 	decoStr = strings.Replace(decoStr, "gbk", "UTF-8", -1)
+	decoStr = strings.Replace(decoStr, "GBK", "UTF-8", -1)
 	respBytes = []byte(decoStr)
 	err = xml.Unmarshal(respBytes, reEmail)
 	if err != nil {
 		Logger("通知接口xml数据转化出错")
+		Logger("返回报文：" + string(respBytes))
 		return err
 	}
 	if reEmail.HEAD.RETCODE == "200" {
